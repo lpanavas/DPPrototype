@@ -127,3 +127,6 @@ with tab3:
     st.header('Upload Dataset')
     st.write('Please upload a dataset with column names as the first row. DO NOT UPLOAD SENSITIVE DATA.')
     st.file_uploader("Upload a CSV file", type=["csv"])
+
+
+st.session_state['active_page'] = 'Dataset_View'

@@ -8,62 +8,22 @@ st.title("Query Selection")
 data = st.session_state.selected_dataset
 
 
-# def get_categorical_vars(df):
-#     categorical_vars = []
-#     for col in df.columns:
-#         if df[col].dtype.name == 'object':
-#             categorical_vars.append(col)
-#     return categorical_vars
-
-# # Function to perform SQL-like selections
-# def execute_query(df, selected_column, group_by):
-#     # Check if the selected column is categorical
-#     if selected_column in get_categorical_vars(df):
-#         # For categorical columns, perform a count aggregation
-#         return df[selected_column].value_counts().to_json()
-#     else:
-#         # For numerical columns, perform a mean aggregation
-#         return df.groupby(group_by)[selected_column].mean().to_json()
-
-# # Load the dataset
-#  # Replace 'your_dataset.csv' with the actual filename
-
-# # Display the dataset
-# st.dataframe(data)
-
-# # Let the user select a column and a group by variable
-# selected_column = st.selectbox('Choose a column:', data.columns)
-# group_by = st.selectbox('Choose a group by variable:', data.columns)
-
-# # Check if the user has made a selection
-# if selected_column and group_by:
-#     # Perform the SQL-like selection
-#     result = execute_query(data, selected_column, group_by)
-#     # Display the result as a JSON
-#     st.json(result)
-
-# else:
-#     st.warning('Please select a column and a group by variable.')
-
-
-
-
 from typing import Dict, List
 
 # Read your dataset (replace with your actual dataset)
 
 
-# Function to detect categorical variables
+# # Function to detect categorical variables
 # def detect_categorical_variables(df):
 #     categorical_vars = [col for col in df.columns if df[col].dtype == 'object']
 #     return categorical_vars
 
-# Store the list of detected categorical variables
+# # Store the list of detected categorical variables
 # categorical_vars = detect_categorical_variables(data)
 
 # st.title("SQL-like Selection on Categorical Variables")
 
-# Select a variable for aggregation
+# # Select a variable for aggregation
 # selected_var = st.selectbox("Select a categorical variable", categorical_vars)
 
 # if selected_var:
@@ -100,6 +60,14 @@ from typing import Dict, List
 
 
 
+# Initialize 'queries' in session_state if not present
+if 'queries' not in st.session_state:
+    st.session_state['queries'] = {}
+
+if st.session_state['active_page'] != 'Query_Selection':
+    st.session_state['queries'] = {}
+
+st.session_state['active_page'] = 'Query_Selection'
 
 
 
@@ -109,9 +77,7 @@ from typing import Dict, List
 
 
 
-
-
-
+df = st.session_state.selected_dataset
 
 
 
@@ -157,29 +123,33 @@ if dataset_view:
 
 
 
-# Initialize 'queries' in session_state if not present
-if 'queries' not in st.session_state:
-    st.session_state['queries'] = {}
-
 def update_queries(column, query_type, metadata=None):
     query_key = f"{column}_{query_type}"
+
     if metadata:
+        
+        num_unique_values = df[column].nunique()
+
+        if num_unique_values > 30:
         # Before updating, ensure consistency between average and histogram if both exist
-        if query_type in ['average', 'histogram']:
-            # Check if the other query type already exists and update it to share bounds
-            other_query_type = 'histogram' if query_type == 'average' else 'average'
-            other_query_key = f"{column}_{other_query_type}"
-            if other_query_key in st.session_state['queries']:
-                # Update the other query to share bounds
-                other_metadata = st.session_state['queries'][other_query_key]
-                other_metadata['lower_bound'] = metadata['lower_bound']
-                other_metadata['upper_bound'] = metadata['upper_bound']
-                other_metadata['column'] = column
-                other_metadata['epsilon'] = None
-                other_metadata['url'] = st.session_state['dataset_url']
-                st.session_state['queries'][other_query_key] = other_metadata
+            if query_type in ['average', 'histogram']:
+                
+                # Check if the other query type already exists and update it to share bounds
+                other_query_type = 'histogram' if query_type == 'average' else 'average'
+                other_query_key = f"{column}_{other_query_type}"
+                if other_query_key in st.session_state['queries']:
+                    # Update the other query to share bounds
+                    other_metadata = st.session_state['queries'][other_query_key]
+                    other_metadata['lower_bound'] = metadata['lower_bound']
+                    other_metadata['upper_bound'] = metadata['upper_bound']
+                    other_metadata['column'] = column
+                    other_metadata['epsilon'] = None
+                    other_metadata['url'] = st.session_state['dataset_url']
+                    st.session_state['queries'][other_query_key] = other_metadata
         # Update the current query in session_state
+
         st.session_state['queries'][query_key] = metadata
+       
     else:
         # Remove the query if it exists in session_state
         if query_key in st.session_state['queries']:
@@ -187,11 +157,10 @@ def update_queries(column, query_type, metadata=None):
 
 
 
-df = st.session_state.selected_dataset
+
 
 
 for column in df.columns:
-   
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
 
@@ -199,34 +168,46 @@ for column in df.columns:
     chart = charts.column_selection_charts(df, column)
     col1.altair_chart(chart, use_container_width=True)
     if is_selected:
-        
-
         # Initialize metadata
         metadata = {}
         
+        # Check the number of unique values in the column
+        num_unique_values = df[column].nunique()
+        
         # Directly track selected options
-        options = ["Count", "Average", "Histogram"]
+        options = []
+        if num_unique_values > 30:
+            options = ["Count", "Average", "Histogram"]
+        else:
+            options = ["Count", "Histogram"]
+        
         option_states = {option: col2.checkbox(f"{option} for {column}", key=f"{option.lower()}_{column}") for option in options}
         
         # Metadata for Average and Histogram, collected once due to shared bounds requirement
-        if option_states["Average"] or option_states["Histogram"]:
-            columnType = df[column].dtype
-            step = None if columnType == 'float64' else 1
-            metadata['lower_bound'] = col3.number_input(f"Lower Bound of Column {column}", step=step, key=f"lb_{column}")
-            metadata['upper_bound'] = col3.number_input(f"Upper Bound of Column {column}", step=step, key=f"ub_{column}")
-            if option_states["Histogram"]:
-                metadata['bins'] = col3.number_input(f"Number of Histogram Bins for {column}", min_value=1, step=1, key=f"bins_{column}")
-        elif option_states["Count"]:
+        if option_states.get("Average") or option_states.get("Histogram"):
+            if num_unique_values > 30:
+                columnType = df[column].dtype
+                step = None if columnType == 'float64' else 1
+                metadata['lower_bound'] = col3.number_input(f"Lower Bound of Column {column}", step=step, key=f"lb_{column}")
+                metadata['upper_bound'] = col3.number_input(f"Upper Bound of Column {column}", step=step, key=f"ub_{column}")
+                if option_states.get("Histogram"):
+                    metadata['bins'] = col3.number_input(f"Number of Histogram Bins for {column}", min_value=1, step=1, key=f"bins_{column}")
+                metadata['data_type'] = 'continuous'
+            else:
+                metadata['data_type'] = 'categorical'
+                col3.write("In practice you would have to specify your bins but for the sake of simplicity we will automatically gather them from the data.")
+        elif option_states.get("Count"):
             col3.write("You're all set; no additional metadata to provide.")
   
         
         # Handle selections and update session state
         for option, selected in option_states.items():
+        
             if selected:
-                # For Count, metadata is explicitly None since it doesn't require bounds or bins
                 if option == "Count":
                     update_queries(column, option.lower(), {'metadata': None})
                 else:
+
                     update_queries(column, option.lower(), metadata)
             else:
                 # Remove the query if it exists in session_state
