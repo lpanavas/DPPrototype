@@ -1,4 +1,3 @@
-
 import altair as alt
 from typing import List
 import streamlit as st
@@ -151,9 +150,12 @@ def get_query_private_outputs(df, query_type, mechanism, column_name, epsilon, b
     scale = calculate_scale(mechanism, sensitivity, epsilon, delta)
     column_type = df[column_name].dtype
     if np.issubdtype(column_type, np.integer):
-        df[column_name] = df[column_name].astype(float)
+        df_copy = df.copy(deep=True)
+        df_copy[column_name] = df_copy[column_name].astype(float)
+        return create_df_meas(df_copy, column_name, float, mechanism, scale, query_type, bounds)
         # bounds = (float(bounds[0]), float(bounds[1]))
-    return create_df_meas(df, column_name, float, mechanism, scale, query_type, bounds)
+    else:
+        return create_df_meas(df, column_name, float, mechanism, scale, query_type, bounds)
 
 def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_values=False):
 
