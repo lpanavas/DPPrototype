@@ -1,3 +1,7 @@
+# This code was created by Michael Shoemate, https://github.com/Shoeboxam
+
+
+
 import numpy as np
 import opendp.prelude as dp
 
@@ -323,3 +327,5 @@ def compare(k, delta_g, alpha, epsilon_g):
 # fig.set_figwidth(10)
 # fig.set_figheight(4)
 # plt.show()
+
+
