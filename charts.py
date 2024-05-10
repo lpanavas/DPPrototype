@@ -152,7 +152,7 @@ def get_query_private_outputs(df, query_type, mechanism, column_name, epsilon, b
     column_type = df[column_name].dtype
     if np.issubdtype(column_type, np.integer):
         df[column_name] = df[column_name].astype(float)
-        bounds = (float(bounds[0]), float(bounds[1]))
+        # bounds = (float(bounds[0]), float(bounds[1]))
     return create_df_meas(df, column_name, float, mechanism, scale, query_type, bounds)
 
 def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_values=False):
