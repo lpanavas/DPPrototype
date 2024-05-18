@@ -26,7 +26,7 @@ def column_selection_charts(df, column):
         ).properties(
             title=column,
             width=150,
-            height=200
+            height=300
         )
     else:
         # Create a histogram for numeric data
@@ -36,7 +36,7 @@ def column_selection_charts(df, column):
         ).properties(
             title=column,
             width=150,
-            height=200
+            height=300
         )
     
 
@@ -405,38 +405,21 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
 
     column_type = df[columnName].dtype
     histogram = {}
-    if np.issubdtype(column_type, np.integer):
-        df_copy = df.copy(deep=True)
-        df_copy[columnName] = df_copy[columnName].astype(column_type)
-        categories_type = np.array(categories, dtype=np.int32)
-
-       
-        # histogram = (
-        #     make_select_column(columnName, int) >>
-        #     dp.t.then_count_by_categories(categories=categories_type)
-        # )
-        categories = np.array(categories, dtype=np.int32)
-
-    if column_type == float:
-        df_copy = df.copy(deep=True)
-        df_copy[columnName] = df_copy[columnName].astype('float')
-        # histogram = (  
-        #   make_select_column(columnName, float) >>
-              
-        #   dp.t.then_count_by_categories(categories=categories) 
-                  
-        #   )
-        categories = np.array(categories, dtype=float)
-    if column_type == str:
+    if column_type == object: # This is where the string data type is handled
         df_copy = df.copy(deep=True)
         df_copy[columnName] = df_copy[columnName].astype('str')
-        # histogram = (  
-        #   make_select_column(columnName, str) >>
-              
-        #   dp.t.then_count_by_categories(categories=categories) 
-                  
-        #   )
         categories = np.array(categories, dtype=str)
+
+    elif np.issubdtype(column_type, np.integer):
+        df_copy = df.copy(deep=True)
+        df_copy[columnName] = df_copy[columnName].astype(column_type)
+        categories = np.array(categories, dtype=np.int32)
+
+    elif column_type == float:
+        df_copy = df.copy(deep=True)
+        df_copy[columnName] = df_copy[columnName].astype('float')
+        categories = np.array(categories, dtype=float)
+
     data = {}
     true_counts = df[columnName].value_counts().reindex(categories).values
 
@@ -444,12 +427,19 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
     if parameter == 'Epsilon':
         for eps in epsilon_variations:
             data[eps] = []
-            histogram = (
-                        dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
-                        dp.t.make_select_column(columnName, str) >>
-                        dp.t.then_cast_default(int) >>
-                        dp.t.then_count_by_categories(categories=categories, MO=dp.L1Distance[int] )
-                    )
+            if column_type == object:
+                histogram = (
+                    dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
+                    dp.t.make_select_column(columnName, str) >>
+                    dp.t.then_count_by_categories(categories=[c[1:] for c in categories], MO=dp.L1Distance[int] )
+                )
+            else:
+                histogram = (
+                    dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
+                    dp.t.make_select_column(columnName, str) >>
+                    dp.t.then_cast_default(int) >>
+                    dp.t.then_count_by_categories(categories=categories, MO=dp.L1Distance[int] )
+                )
             # histogram(df.to_csv(index=False, header=False))
             noisy_laplace_histogram = dp.binary_search_chain(
                 lambda s: histogram >> dp.m.then_laplace(scale=s),
@@ -472,12 +462,19 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
 
             # categories = np.array(df[columnName].unique(), dtype=np.int32)
 
-            histogram = (
-                        dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
-                        dp.t.make_select_column(columnName, str) >>
-                        dp.t.then_cast_default(int) >>
-                        dp.t.then_count_by_categories(categories=categories, MO=dp.L1Distance[int] )
-                    )
+            if column_type == object:
+                histogram = (
+                    dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
+                    dp.t.make_select_column(columnName, str) >>
+                    dp.t.then_count_by_categories(categories=[c[1:] for c in categories], MO=dp.L1Distance[int] )
+                )
+            else:
+                histogram = (
+                    dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
+                    dp.t.make_select_column(columnName, str) >>
+                    dp.t.then_cast_default(int) >>
+                    dp.t.then_count_by_categories(categories=categories, MO=dp.L1Distance[int] )
+                )
             # histogram(df.to_csv(index=False, header=False))
             noisy_laplace_histogram = dp.binary_search_chain(
                 lambda s: histogram >> dp.m.then_laplace(scale=s),
@@ -492,12 +489,21 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
             # categories = np.array(df[columnName].unique(), dtype=np.int32)
 
             delta = 1e-6
-            t_hist = (
+            if column_type == object:
+                t_hist = (
+                    dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
+                    dp.t.make_select_column(columnName, str) >>
+                    dp.t.then_count_by_categories(categories=[c[1:] for c in categories], MO=dp.L2Distance[float])
+                )
+            else:
+                t_hist = (
                 dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
                 dp.t.make_select_column(columnName, str) >>
                 dp.t.then_cast_default(int) >>
                 dp.t.then_count_by_categories(categories=categories, MO=dp.L2Distance[float])
             )
+
+            
             m_hist = dp.binary_search_chain(
                 lambda s: at_delta(t_hist >> dp.m.then_gaussian(scale=s), delta), 
                 d_in=1, 
@@ -551,6 +557,7 @@ def visualize_data_histogram(data, categories, data_type):
         # Create bin labels for continuous data
         bin_labels = [f'{categories[i]} - {categories[i+1]}' for i in range(len(categories)-1)]
         fig.update_layout(xaxis=dict(tickvals=categories[:-1], ticktext=bin_labels))
+    
 
     fig.update_layout(
         barmode='group',
@@ -565,6 +572,8 @@ def visualize_data_histogram(data, categories, data_type):
             borderwidth=2
         )
     )
+    if data_type == 'Categorical':
+        fig.update_xaxes(tickmode='array', tickvals=categories, ticktext=categories, tickangle=-45)
 
     return fig
 
@@ -870,76 +879,6 @@ def calculate_gaussian_scale(sensitivity, epsilon, delta):
     return scale
 
 
-
-def one_query_privacy_accuracy_lines_histogram(df, selected_query, mechanisms, alpha, epsilon_input, error_type, delta = None):
-   
-    epsilons = np.linspace(0.01, 1.0, 100) 
-    columnName, queryType = selected_query.split('_')
-    data_type = st.session_state['queries'][selected_query]['data_type']
-    sensitivity = 1  # Sensitivity for histogram queries is usually 1
-
-    line_df = pd.DataFrame(columns=['epsilon', 'error', 'mechanism'])
-
-    for eps in epsilons:
-        if 'laplace' in mechanisms:
-            laplace_error = dp.laplacian_scale_to_accuracy(sensitivity / eps, alpha)  
-            new_row = pd.DataFrame({'epsilon': [eps], 'error': [laplace_error], 'mechanism': 'laplace'})
-            line_df = pd.concat([line_df, new_row], ignore_index=True)
-
-        if 'gaussian' in mechanisms:
-            gaussian_error = dp.gaussian_scale_to_accuracy(calculate_gaussian_scale(sensitivity, eps, delta), alpha)  
-            new_row = pd.DataFrame({'epsilon': [eps], 'error': [gaussian_error], 'mechanism': 'gaussian'})
-            line_df = pd.concat([line_df, new_row], ignore_index=True)
-
-    point_df = pd.DataFrame(columns=['epsilon', 'error', 'mechanism'])
-
-    if 'laplace' in mechanisms:
-        laplace_error = dp.laplacian_scale_to_accuracy(sensitivity / epsilon_input, alpha)  
-        new_row = pd.DataFrame({'epsilon': [epsilon_input], 'error': [laplace_error], 'mechanism': 'laplace'})
-        point_df = pd.concat([point_df, new_row], ignore_index=True)
-
-    if 'gaussian' in mechanisms:
-        gaussian_error = dp.gaussian_scale_to_accuracy(calculate_gaussian_scale(sensitivity, epsilon_input, delta), alpha)  
-        new_row = pd.DataFrame({'epsilon': [epsilon_input], 'error': [gaussian_error], 'mechanism': 'gaussian'})
-        point_df = pd.concat([point_df, new_row], ignore_index=True)
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Hypothetical outputs", "Accuracy vs. Privacy Parameter (\u03B5)"), horizontal_spacing=0.15)
-    point_colors = ['#0072B2', '#80b1d3'] 
-
-    error_bar_color = 'red'  
-    
-    if data_type == 'continuous':
-        left_fig = noisy_histogram_creation_continuous(df, selected_query, 'Mechanism', mechanisms, epsilon_input, hide_non_feasible_values=True)
-        
-    elif data_type == 'categorical':
-        left_fig =  left_fig = noisy_histogram_creation(df, selected_query, 'Categorical', 'Mechanism', mechanisms, epsilon_input, hide_non_feasible_values=True)
-
-    for trace in left_fig['data']:
-        fig.add_trace(trace, row=1, col=1)
-
-    for index, mechanism in enumerate(line_df['mechanism'].unique()):
-        mechanism_df = line_df[line_df['mechanism'] == mechanism]
-        fig.add_trace(go.Scatter(x=mechanism_df['epsilon'], y=mechanism_df['error'], mode='lines', 
-                                name=f"Additive Error Upper Bound for {mechanism}", 
-                                line=dict(color=point_colors[index])), row=1, col=2)
-
-    for index, row in point_df.iterrows():
-        if index == 0:  
-            showlegend = True
-        else:
-            showlegend = False
-        fig.add_trace(
-            go.Scatter(x=[row['epsilon']], y=[row['error']], mode='markers', 
-                    name="Selected Epsilon",
-                    marker=dict(color='red', size=6),
-                    showlegend=showlegend),  
-            row=1, col=2  
-        )
-
-    fig.update_layout(legend=dict(orientation="h", xanchor="center", x=0.5, y=-0.2))
-        
-    return fig
-    
 def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsilon_input, error_type, delta = None):
     
     epsilons = np.linspace(0.01, 1.0, 100) 
@@ -996,7 +935,7 @@ def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsi
 
     error_bar_color = 'red'  # Red for error bars
 
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Hypothetical outputs", "Accuracy vs. Privacy Parameter (\u03B5)"), horizontal_spacing=0.15)
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("Hypothetical outputs", "Accuracy vs. Privacy Parameter (\u03B5)"), horizontal_spacing=0.15,  vertical_spacing=0.3)
     mechanism_colors = {'laplace': '#80b1d3', 'gaussian': '#0072B2'}
 
     if queryType == 'histogram':
@@ -1085,7 +1024,7 @@ def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsi
                     mode='markers',
                     name='Laplace',
                     marker=dict(color=point_colors[0], opacity=.3),
-                    showlegend=False,
+                    showlegend=True,
                 ),
                 
 
@@ -1121,7 +1060,7 @@ def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsi
                     mode='markers',
                     name='gaussian',
                     marker=dict(color=point_colors[1], opacity=.3),
-                    showlegend=False,
+                    showlegend=True,
                 ),
                 
 
@@ -1151,6 +1090,7 @@ def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsi
 
         # Update xaxis properties
         fig.update_xaxes(title_text="Mechanism", row=1, col=1)
+    fig.update_layout(legend=dict(orientation="h", xanchor="center", x=0.5, y=-0.2), margin=dict(l=0, r=0, t=0, b=100))
 
     fig.update_xaxes(title_text="Privacy Parameter (\u03B5)", row=1, col=2)
 
@@ -1175,244 +1115,11 @@ def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsi
         )
 
     return fig
-# def one_query_privacy_accuracy_lines(df, selected_query, mechanisms, alpha, epsilon_input, error_type, delta = None):
-    
-#     print(selected_query, mechanisms, alpha, epsilon_input, error_type, delta)
-#     epsilons = np.linspace(0.01, 1.0, 100) 
-#     columnName, queryType = selected_query.split('_')
-#     data_min = None
-#     data_max = None
-#     data_type = st.session_state['queries'][selected_query]['data_type']
 
-  
-#     if queryType == 'average':
-#         columnType = df[columnName].dtype
-#         data_min = st.session_state['queries'][selected_query]['lower_bound']
-#         data_max = st.session_state['queries'][selected_query]['upper_bound']
-#         sensitivity = (data_max - data_min)/df.shape[0]
-#         summary_df = pd.DataFrame({
-#             'mechanism': mechanisms,
-#             'true_value': [df[columnName].mean()] * len(mechanisms),  # Example true mean values
-#             # 'error_margin': [point_df['error'][0] ,point_df['error'][1] ]  # Example error margins
-#         })
-
-#     elif queryType == 'count':
-#         sensitivity = 1  # Set the sensitivity to 1 for 'count' query
-#         summary_df = pd.DataFrame({
-#             'mechanism': mechanisms,
-#             'true_value': [df[columnName].count()] * len(mechanisms),  # Example true mean values
-#             # 'error_margin': [point_df['error'][0] ,point_df['error'][1] ]  # Example error margins
-#         })
-#     elif queryType == 'histogram':
-#         sensitivity = 1
-#         if st.session_state['queries'][selected_query]['data_type'] == 'continuous':
-#             bins = st.session_state['queries'][selected_query]['bins']  # Use specified number of bins for continuous data
-
-#     line_df = pd.DataFrame(columns=['epsilon', 'error', 'mechanism'])
-
-#     for eps in epsilons:
-#         if 'laplace' in mechanisms:
-#             laplace_error = dp.laplacian_scale_to_accuracy(sensitivity / eps, alpha)  # Ensure you use 'eps' here, not 'epsilon'
-#             new_row = pd.DataFrame({'epsilon': [eps], 'error': [laplace_error], 'mechanism': 'lapalce'})
-#             line_df = pd.concat([line_df, new_row], ignore_index=True)
-
-            
-#         if 'gaussian' in mechanisms:
-#             gaussian_error = dp.gaussian_scale_to_accuracy(calculate_gaussian_scale(sensitivity, eps, delta), alpha)  # Again, ensure 'eps' is used
-#             new_row = pd.DataFrame({'epsilon': [eps], 'error': [gaussian_error], 'mechanism': 'gaussian'})
-#             line_df = pd.concat([line_df, new_row], ignore_index=True)
-
-#     point_df = pd.DataFrame(columns=['epsilon', 'error', 'mechanism'])
-
-# # Calculate Laplace error for the specified epsilon value and append to the DataFrame
-#     if 'laplace' in mechanisms:
-#         laplace_error = dp.laplacian_scale_to_accuracy(sensitivity / epsilon_input, alpha)  # Ensure you use 'eps' here, not 'epsilon'
-#         new_row = pd.DataFrame({'epsilon': [epsilon_input], 'error': [laplace_error], 'mechanism': 'laplace'})
-#         point_df = pd.concat([point_df, new_row], ignore_index=True)
-
-#     # Calculate Gaussian error for the specified epsilon value and append to the DataFrame    
-#     if 'gaussian' in mechanisms:
-#         gaussian_error = dp.gaussian_scale_to_accuracy(calculate_gaussian_scale(sensitivity, epsilon_input, delta), alpha)  # Again, ensure 'eps' is used
-#         new_row = pd.DataFrame({'epsilon': [epsilon_input], 'error': [gaussian_error], 'mechanism': 'gaussian'})
-#         point_df = pd.concat([point_df, new_row], ignore_index=True)
-    
-#     # Create subplots: 1 row, 2 cols
-#     point_colors = ['#0072B2', '#80b1d3'] 
-
-#     error_bar_color = 'red'  # Red for error bars
-
-#     fig = make_subplots(rows=1, cols=2, subplot_titles=("Hypothetical outputs", "Accuracy vs. Privacy Parameter (\u03B5)"), horizontal_spacing=0.15)
-#     error_margin = []
-#     summary_df['error_margin'] = point_df['error'].tolist()
-
-#     fig.update_yaxes(title_standoff=10, row=1, col=2) 
-#     if error_type == 'Absolute Additive Error':
-#         fig.update_yaxes(title_text="Hypothetical Outputs", row=1, col=1)
-#         fig.update_yaxes(title_text="Absolute Error Upper Bound",  row=1, col=2)
-#         pass
-#     elif error_type == 'Relative Additive Error':
-#         line_df['error'] = line_df['error'] / summary_df['true_value'][0]
-        
-#         # summary_df['error_margin'] = summary_df['error_margin'] / summary_df['true_value'][0]
-#         fig.update_yaxes(title_text="Hypothetical Outputs", row=1, col=1)
-#         fig.update_yaxes(title_text="Relative Error Upper Bound", tickformat=',.0%', row=1, col=2)
-#     else:
-#         raise ValueError("Invalid error_type. Please choose 'Absolute Error' or 'Relative Error'.")
-#     # Plot 1: Accuracy vs. Privacy for Selected Mechanisms
-#     for index, mechanism in enumerate(line_df['mechanism'].unique()):
-#         mechanism_df = line_df[line_df['mechanism'] == mechanism]
-#         fig.add_trace(go.Scatter(x=mechanism_df['epsilon'], y=mechanism_df['error'], mode='lines', 
-#                                 name=f"Additive Error Upper Bound for {mechanism}", 
-#                                 line=dict(color=point_colors[index])), row=1, col=2)
-        
-    
-#     for index, row in point_df.iterrows():
-#         if index == 0:  # Only add one dot to the legend
-#             showlegend = True
-#         else:
-#             showlegend = False
-#         if error_type == 'Relative Additive Error':
-#             row['error'] = row['error'] / summary_df['true_value'][0]
-#         fig.add_trace(
-#             go.Scatter(x=[row['epsilon']], y=[row['error']], mode='markers', 
-#                     name="Selected Epsilon",
-#                     # marker=dict(color=point_colors[point_df['mechanism'].unique().tolist().index(row['mechanism'])], size=10), 
-#                     marker=dict(color='red', size=6),
-#                     showlegend=showlegend),  
-#             row=1, col=2  
-#         )
-
-#     fig.update_layout(legend=dict(orientation="h", xanchor="center", x=0.5, y=-0.2))
-    
-#     if queryType == 'histogram':
-#         if data_type == 'continuous':
-#             print(selected_query, 'Mechanism', mechanisms, hide_non_feasible_values=True)
-#             left_fig = noisy_histogram_creation_continuous(df, selected_query, 'Mechanism', mechanisms, epsilon_input, hide_non_feasible_values=True)
-            
-#         elif data_type == 'categorical':
-#             print(selected_query, 'Categorical', 'Mechanism', mechanisms,)
-#             left_fig =  left_fig = noisy_histogram_creation(df, selected_query, 'Categorical', 'Mechanism', mechanisms, epsilon_input, hide_non_feasible_values=True)
-
-#         for trace in left_fig['data']:
-#             fig.add_trace(trace, row=1, col=1)
-
-#         for index, mechanism in enumerate(line_df['mechanism'].unique()):
-#             mechanism_df = line_df[line_df['mechanism'] == mechanism]
-#             fig.add_trace(go.Scatter(x=mechanism_df['epsilon'], y=mechanism_df['error'], mode='lines', 
-#                                     name=f"Additive Error Upper Bound for {mechanism}", 
-#                                     line=dict(color=point_colors[index])), row=1, col=2)
-
-    
-#     else:
-
-#         max_value =point_df['error'].max()
-
-#         laplace_scale =  sensitivity/ epsilon_input
-#         vals_laplace = []
-#         vals_gauss =[]
-        
-#         if 'laplace' in mechanisms: 
-#             laplace_row = point_df.loc[point_df['mechanism'] == 'laplace']
-#             for i in range(20):
-#                 vals_laplace.append(get_query_private_outputs(df, queryType, 'laplace', columnName, epsilon,(data_min, data_max),  delta))
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=['Laplace'],  # Use 0 for Laplace
-#                     y=[summary_df.iloc[0]['true_value']],
-#                     error_y=dict(type='data', array=[laplace_row['error'].values[0]], visible=True, color=error_bar_color),
-
-#                     mode='markers',
-#                     name='laplace',
-#                     marker=dict(size=10, opacity=00),  # Adjust opacity for visual emphasis
-#                     showlegend=False,
-#                 ),
-                
-
-#                 row=1, col=1
-#             )    
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=['laplace'] * 20,  # X-values are categorical labels
-#                     y=vals_laplace,
-#                     mode='markers',
-#                     name='Laplace',
-#                     marker=dict(color=point_colors[0], opacity=.3),
-#                     showlegend=False,
-#                 ),
-                
-
-#                 row=1, col=1
-#             )
-            
-        
-
-#         if 'gaussian' in mechanisms:
-#             gaussian_row = point_df.loc[point_df['mechanism'] == 'gaussian']
-#             for i in range(20):
-                
-#                 vals_gauss.append(get_query_private_outputs(df, queryType, 'gaussian', columnName, epsilon, (data_min, data_max),  delta))       
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=['Gaussian'],  # Use 1 for Gaussian
-#                     y=[summary_df.iloc[0]['true_value']],
-#                     error_y=dict(type='data', array=[gaussian_row['error'].values[0]], visible=True, color=error_bar_color),
-
-#                     mode='markers',
-#                     name='gaussian',
-#                     marker=dict(size=10, opacity=00),  # Adjust opacity for visual emphasis
-#                     showlegend=False,
-#                 ),
-                
-
-#                 row=1, col=1
-#             )
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=['gaussian'] * 20,  # X-values are categorical labels
-#                     y=vals_gauss,
-#                     mode='markers',
-#                     name='gaussian',
-#                     marker=dict(color=point_colors[1], opacity=.3),
-#                     showlegend=False,
-#                 ),
-                
-
-#                 row=1, col=1
-#             )
-            
-            
-
-#         fig.add_shape(type="line",
-#                     x0=-.1,  # Starting from the first x-axis item
-#                     y0=summary_df.iloc[0]['true_value'],  # True mean value for y
-#                     x1=1.1,  # Ending at the last x-axis item
-#                     y1=summary_df.iloc[0]['true_value'],  # Same true mean value for y to keep it horizontal
-#                     line=dict(
-#                         color="black",
-#                         width=1,
-#                         dash="dash",
-#                     ),
-#                     xref="paper",  # Reference the whole x-axis range
-#                     yref="y",
-#                     row=1, col=1, # Reference the y-axis values
-#                     showlegend=True,
-#                     name='True Mean'
-                    
-#                     )
-                
-
-#         fig.update_yaxes(title_text="Hypothetical outputs", range=[0, (summary_df['true_value'][0]+ max_value)*1.25], row=1, col=1)
-#         # Update xaxis properties
-#         fig.update_xaxes(title_text="Mechanism", row=1, col=1)
-#     fig.update_xaxes(title_text="Privacy Parameter (\u03B5)", row=1, col=2)
-
-#     # Update yaxis properties
-    
-#     return fig
 
 def compare_compositors(df):
     # Create a figure with two subplots
-    fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.2, subplot_titles=("Epsilon", "Delta"))
+    fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.2, subplot_titles=("Per query epsilon", "Per query delta"))
 
     # Get the unique types of compositors
     compositors = df['Compositor'].unique()
@@ -1436,7 +1143,6 @@ def compare_compositors(df):
 
     # Update layout to show both plots side by side
     fig.update_layout(height=400, width=400,
-                    #   title_text="Multiple Queries",
                       xaxis_title='Compositors',
                       yaxis_title='Per query epsilon',
                       xaxis2_title='Compositors',

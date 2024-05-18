@@ -1,13 +1,31 @@
 import streamlit as st
 import charts
 from NotebookCreator import create_notebook
+from streamlit_extras.switch_page_button import switch_page
+
 from nbconvert import PythonExporter
 import nbformat as nbf
 from CompositionFunctions import *
 import pandas as pd
 
 st.session_state['active_page'] = 'Visualization_page'
-
+try:
+    st.session_state['active_page']
+    st.session_state['selected_dataset']
+    st.session_state['simulations_parameter_selection']
+    st.session_state['hide_non_feasible_values']
+    st.session_state['epsilon_inputs']
+    st.session_state['bounds_inputs']
+    st.session_state['bins_inputs']
+    st.session_state['one_query_selected_mechanism']
+    st.session_state['alpha']
+    st.session_state['error_type']
+    st.session_state['delta_one_query']
+except KeyError:
+    st.error("Please select a dataset first.")
+    if st.button("Go to Dataset Page"):
+        switch_page("Dataset_View")
+    st.stop()
 
 st.title('Visualization Playground')
 # Creating tabs
@@ -243,7 +261,8 @@ with tab1:
         if 'visualize_clicked' in st.session_state and st.session_state['visualize_clicked']:
             fig = st.session_state.get('fig', None)
             if fig is not None:
-                st.plotly_chart(fig, use_container_width=True)
+                with st.spinner('Loading Visualization...'):
+                    st.plotly_chart(fig, use_container_width=True)
                         
 
 
@@ -333,33 +352,34 @@ with tab2:
     with col2:
         st.header('Visualization')
         if st.session_state.one_query_selected_mechanism and  st.session_state['alpha'] and  st.session_state['error_type'] is not None:
-            one_query_charts = charts.one_query_privacy_accuracy_lines(df, selected_query, st.session_state['one_query_selected_mechanism'], st.session_state['alpha'] , st.session_state['one_query_epsilon_slider'],  st.session_state['error_type'],st.session_state['delta_one_query'] )
-            st.plotly_chart(one_query_charts, use_container_width=True)
+            with st.spinner('Loading Visualization...'):
+                one_query_charts = charts.one_query_privacy_accuracy_lines(df, selected_query, st.session_state['one_query_selected_mechanism'], st.session_state['alpha'] , st.session_state['one_query_epsilon_slider'],  st.session_state['error_type'],st.session_state['delta_one_query'] )
+                st.plotly_chart(one_query_charts, use_container_width=True)
 
-            with st.expander("Chart Explanations"):
-                mechanism_names = ' and '.join(st.session_state['one_query_selected_mechanism'])  # e.g., "Laplace and Gaussian"
-                chart_explanations = f"""
-                #### Hypothetical Outputs (Left)
+                with st.expander("Chart Explanations"):
+                    mechanism_names = ' and '.join(st.session_state['one_query_selected_mechanism'])  # e.g., "Laplace and Gaussian"
+                    chart_explanations = f"""
+                    #### Hypothetical Outputs (Left)
 
-                This chart displays individual hypothetical outputs for the selected privacy-preserving mechanism(s): {mechanism_names}. 
-                The true mean is indicated by a dashed red line, serving as a benchmark to assess the accuracy of each mechanism's output. 
-                The points represent hypothetical outputs. Since differential privacy adds random noise we cannot say for certain which value will be released. 
-                The distribution of points gives a sense of where the noisy value is likely to fall.
-                Use this chart to better understand how the implementation choices will influence your noisy output.
-                This chart also gives an indication of which mechanism may be better suited for your needs. The closer the distribution to the true mean, the better the accuracy.
+                    This chart displays individual hypothetical outputs for the selected privacy-preserving mechanism(s): {mechanism_names}. 
+                    The true mean is indicated by a dashed red line, serving as a benchmark to assess the accuracy of each mechanism's output. 
+                    The points represent hypothetical outputs. Since differential privacy adds random noise we cannot say for certain which value will be released. 
+                    The distribution of points gives a sense of where the noisy value is likely to fall.
+                    Use this chart to better understand how the implementation choices will influence your noisy output.
+                    This chart also gives an indication of which mechanism may be better suited for your needs. The closer the distribution to the true mean, the better the accuracy.
 
-                ####  Accuracy vs. Privacy Parameter (ε) (Right)
+                    ####  Accuracy vs. Privacy Parameter (ε) (Right)
 
-                This chart illustrates the { st.session_state['error_type']} of the selected mechanism(s): {mechanism_names}, as a function of the privacy parameter ε.
-                As ε increases, the error bound  decreases, signifying that less stringent privacy (higher ε) correlates with higher accuracy.
-                The lines represent the error bound as specified by beta (\u03B2). The X axis can be interpreted as the true value of the query. 
-                The noisy values will fall within within the error bounds with 1-\u03B2 confidence.
-                The red dots represent the privacy/accuracy point visualized in the left chart. 
-                This chart can help decide the correct level of privacy for your data release. 
-                The error often increases exponetially as we decrease the privacy parameter. If possible, increase the epsilon beyond the 'elbow' of the curve to maximize accuracy while maintaining privacy.
-                """
-                
-                st.markdown(chart_explanations)
+                    This chart illustrates the { st.session_state['error_type']} of the selected mechanism(s): {mechanism_names}, as a function of the privacy parameter ε.
+                    As ε increases, the error bound  decreases, signifying that less stringent privacy (higher ε) correlates with higher accuracy.
+                    The lines represent the error bound as specified by beta (\u03B2). The X axis can be interpreted as the true value of the query. 
+                    The noisy values will fall within within the error bounds with 1-\u03B2 confidence.
+                    The red dots represent the privacy/accuracy point visualized in the left chart. 
+                    This chart can help decide the correct level of privacy for your data release. 
+                    The error often increases exponetially as we decrease the privacy parameter. If possible, increase the epsilon beyond the 'elbow' of the curve to maximize accuracy while maintaining privacy.
+                    """
+                    
+                    st.markdown(chart_explanations)
 
 
 
@@ -393,8 +413,9 @@ with tab3:
 
     with col1:  # Put the sliders in the first column
         st.header("Parameters")
+        st.write("Adjust the parameters to see how they affect the privacy budget.")
         k = st.slider('Number of queries', 1, 100)
-        del_g = st.slider('Global Delta (log scale)', -6, -2)
+        del_g = st.slider('Global Delta (log scale)', -8, -2)
         epsilon_g = st.slider('Global Epsilon', 0.01, 1.0)
 
     with col2:  # Put the visualization in the second column
@@ -403,8 +424,16 @@ with tab3:
         dataframe = pd.DataFrame.from_dict(compositors, orient='index', columns=['Epsilon_0', 'Delta_0'])
         dataframe['Compositor'] = dataframe.index  # Add a new column with the index values
         fig = charts.compare_compositors(dataframe)
-        st.plotly_chart(fig)
+        fig.update_layout(plot_bgcolor='white', paper_bgcolor='white', margin=dict(l=0, r=0, t=30, b=0))
 
+        st.plotly_chart(fig, use_container_width=True)
+        with st.expander("Explanation"):
+            st.markdown("""
+            This chart shows how different compositors affect the privacy budget.
+            The x-axis represents the type of compositor used.
+            The y-axis on the left represents the per query epsilon, and the y-axis on the right represents the per query delta.
+            You can adjust the parameters on the left to see how they affect the privacy budget.
+            """)
 
 
 

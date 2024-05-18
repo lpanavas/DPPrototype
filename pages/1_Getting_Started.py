@@ -31,3 +31,5 @@ Let's get started by selecting your dataset.
 dataset_view = st.button("Datasets")
 if dataset_view:
     switch_page("Dataset_View")
+
+st.session_state['active_page'] = 'Getting_Started'
