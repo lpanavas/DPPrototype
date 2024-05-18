@@ -9,23 +9,6 @@ from CompositionFunctions import *
 import pandas as pd
 
 st.session_state['active_page'] = 'Visualization_page'
-try:
-    st.session_state['active_page']
-    st.session_state['selected_dataset']
-    st.session_state['simulations_parameter_selection']
-    st.session_state['hide_non_feasible_values']
-    st.session_state['epsilon_inputs']
-    st.session_state['bounds_inputs']
-    st.session_state['bins_inputs']
-    st.session_state['one_query_selected_mechanism']
-    st.session_state['alpha']
-    st.session_state['error_type']
-    st.session_state['delta_one_query']
-except KeyError:
-    st.error("Please select a dataset first.")
-    if st.button("Go to Dataset Page"):
-        switch_page("Dataset_View")
-    st.stop()
 
 st.title('Visualization Playground')
 # Creating tabs
