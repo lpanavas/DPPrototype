@@ -153,9 +153,10 @@ def get_query_private_outputs(df, query_type, mechanism, column_name, epsilon, b
         df_copy = df.copy(deep=True)
         df_copy[column_name] = df_copy[column_name].astype(float)
         return create_df_meas(df_copy, column_name, float, mechanism, scale, query_type, bounds)
-        # bounds = (float(bounds[0]), float(bounds[1]))
-    else:
+    elif np.issubdtype(column_type, np.floating):
         return create_df_meas(df, column_name, float, mechanism, scale, query_type, bounds)
+    else:
+        return create_df_meas(df, column_name, str, mechanism, scale, query_type, bounds)
 
 def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_values=False):
 
@@ -177,10 +178,14 @@ def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_valu
             
 
                 domainType = dp.domain_of(List[float])
-                if columnType == 'float64':
+                if columnType == 'object': # Check if column type is string
+                    domainType = dp.domain_of(List[str])
+                elif columnType == 'float64':
                     domainType = dp.domain_of(List[float])
                 elif columnType == 'int64':
                     domainType = dp.domain_of(List[int])
+                private_releases = {}
+
                 private_releases = {}
                 
                 # Will store releases for each epsilon
@@ -401,24 +406,28 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
     columnName, queryType = selected_query.split('_')
     epsilon_variations = sorted(parameter_list)
     epsilon_variations.reverse()
-    categories = sorted(df[columnName].unique())
+    categories = df[columnName].unique().tolist()  # Ensure categories is a list
 
     column_type = df[columnName].dtype
     histogram = {}
-    if column_type == object: # This is where the string data type is handled
+    if column_type == object: 
         df_copy = df.copy(deep=True)
         df_copy[columnName] = df_copy[columnName].astype('str')
-        categories = np.array(categories, dtype=str)
+        categories = [str(c) for c in categories]  # Ensure categories are strings
 
     elif np.issubdtype(column_type, np.integer):
         df_copy = df.copy(deep=True)
         df_copy[columnName] = df_copy[columnName].astype(column_type)
-        categories = np.array(categories, dtype=np.int32)
+        categories = [int(c) for c in categories]  # Ensure categories are integers
 
     elif column_type == float:
         df_copy = df.copy(deep=True)
         df_copy[columnName] = df_copy[columnName].astype('float')
-        categories = np.array(categories, dtype=float)
+        categories = [float(c) for c in categories]  # Ensure categories are floats
+
+    categories = list(set(categories))  # Remove duplicates from categories
+    print(categories)
+    print(categories)
 
     data = {}
     true_counts = df[columnName].value_counts().reindex(categories).values
@@ -431,7 +440,7 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
                 histogram = (
                     dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
                     dp.t.make_select_column(columnName, str) >>
-                    dp.t.then_count_by_categories(categories=[c[1:] for c in categories], MO=dp.L1Distance[int] )
+                    dp.t.then_count_by_categories(categories=categories, MO=dp.L1Distance[int] )
                 )
             else:
                 histogram = (

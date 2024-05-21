@@ -67,7 +67,7 @@ with tab1:
                 if st.session_state['simulations_parameter_selection']:
                     if st.session_state['simulations_parameter_selection'] == 'Epsilon':
                         if 'epsilon_inputs' not in st.session_state:
-                            st.session_state['epsilon_inputs'] = []
+                            st.session_state['epsilon_inputs'] = [1.000]  # Add the default epsilon value here
                         col3, col4 = st.columns([1, 1])
                         with col3:
                             with st.form('epsilon_form'):
@@ -85,14 +85,12 @@ with tab1:
                                         st.warning('Maximum of 4 \u03B5 values reached.')
                         with col4:
                             for index, epsilon in enumerate(st.session_state['epsilon_inputs']):
-                        
-                            
                                 if st.button(f"Delete {epsilon}", key=f"delete_{index}"):
                                     # Remove epsilon from the list
                                     st.session_state['epsilon_inputs'].remove(epsilon)
                                     # Update the page to reflect the deletion
-                                    st.rerun()
-                   
+                                    st.experimental_rerun()
+                                    
 
                     elif st.session_state['simulations_parameter_selection'] == 'Bounds':
                         epsilon = st.number_input('Epsilon', min_value=0.001, step=0.001, value=1.0000, format="%.3f", key='epsilon_input')
@@ -105,7 +103,7 @@ with tab1:
 
                             
                             if 'bounds_inputs' not in st.session_state:
-                                st.session_state['bounds_inputs'] = []
+                                st.session_state['bounds_inputs'] = [(lower_bound, upper_bound)]  # Initialize with default value
                             
                             submitted = st.button('Add Bounds')
                             if submitted:
@@ -126,7 +124,7 @@ with tab1:
                                     # Update the page to reflect the deletion
                                     st.rerun()
 
-    
+
                     elif st.session_state['simulations_parameter_selection'] == 'Bins':
                         epsilon = st.number_input('Epsilon', min_value=0.001, step=0.001, value=1.0000, format="%.3f", key='epsilon_input')
 
@@ -135,17 +133,15 @@ with tab1:
                         with col3:
                             
                             
-                            
                         
                             lower_bound = st.number_input('Lower Bound', min_value=-100000000.0, step=1.0, value=float(st.session_state['queries'][selected_query]['lower_bound']), format="%.1f", key='lower_bound_input')
                             num_bins = st.number_input('Number of Bins', min_value=2, max_value=50, value=10, step=1, key='num_bins_input')
                             
                         
-                        
                         with col3:
                             
                             if 'bins_inputs' not in st.session_state:
-                                st.session_state['bins_inputs'] = []
+                                st.session_state['bins_inputs'] = [num_bins]  # Initialize with default value
                             
                             submitted = st.button('Add Bins')
                             if submitted:

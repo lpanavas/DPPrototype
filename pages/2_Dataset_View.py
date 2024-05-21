@@ -26,7 +26,23 @@ datasets = {
         'count': 1000,
         'multiple_user_contributions': False,
         'domain': 'General Demographics'
-    }
+    },
+
+    # 'Student Performance': {
+    #     'url': 'https://raw.githubusercontent.com/lpanavas/DPEducationDatasets/master/student_performance.csv',
+    #     'description': 'This dataset contains student grades and demographic information.',
+    #     'count': 395,
+    #     'multiple_user_contributions': False,
+    #     'domain': 'Education'
+    # },
+
+    # 'Online Retail': {
+    #     'url': 'https://raw.githubusercontent.com/lpanavas/DPEducationDatasets/master/online_retail.csv',
+    #     'description': 'This dataset contains transactions from an online retailer in the UK.',
+    #     'count': 541909,
+    #     'multiple_user_contributions': False,
+    #     'domain': 'Retail'
+    # }
 }
 st.set_page_config(layout="wide")
 

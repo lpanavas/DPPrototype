@@ -40,9 +40,11 @@ def update_queries(column, query_type, metadata=None):
 # Read your dataset
 data = st.session_state.selected_dataset
 
-# Initialize 'queries' in session_state if not present
+# Initialize session state variables if not present
 if 'queries' not in st.session_state:
     st.session_state['queries'] = {}
+if 'selected_columns' not in st.session_state:
+    st.session_state['selected_columns'] = []
 
 # Ensure active page is set to 'Query_Selection'
 st.session_state['active_page'] = 'Query_Selection'
@@ -67,18 +69,26 @@ with st.expander("Dataframe"):
 st.subheader("Select Columns")
 
 # Display columns with checkboxes and options
-# Display columns with checkboxes and options
 columns = data.columns.tolist()
 num_cols = 5  # number of columns in the row structure
 col_containers = st.columns(num_cols)
-selected_columns = []
 
 for i, col in enumerate(columns):
     with col_containers[i % num_cols]:
         if st.checkbox(f"Select {col}", key=f"checkbox_{col}"):
-            selected_columns.append(col)
+            if col not in st.session_state['selected_columns']:
+                st.session_state['selected_columns'].append(col)
+                st.session_state[f"dialog_open_{col}"] = True  # Initialize dialog state when column is selected
+        else:
+            if col in st.session_state['selected_columns']:
+                st.session_state['selected_columns'].remove(col)
+                for query_type in ['count', 'average', 'histogram']:
+                    query_key = f"{col}_{query_type}"
+                    if query_key in st.session_state['queries']:
+                        del st.session_state['queries'][query_key]
+                st.session_state[f"dialog_open_{col}"] = False  # Reset dialog state when column is deselected
 
-
+# Dialog function to add queries
 @st.experimental_dialog("Add Query", width="small")
 def add_query(column):
     if f"metadata_{column}" not in st.session_state:
@@ -122,14 +132,15 @@ def add_query(column):
             update_queries(column, option.lower())
 
     if st.button("Submit"):
-        update_queries(column, option.lower(), metadata)
         st.session_state[f"dialog_open_{column}"] = False
         st.rerun()
 
-        
-for column in selected_columns:
+# Update queries based on selected columns
+for column in st.session_state['selected_columns']:
     if st.session_state.get(f"dialog_open_{column}", True):
         add_query(column)
+
+# st.write(st.session_state)
 
 # Button to visualize the data
 dataset_view = st.button("Go to Visualization Page")
