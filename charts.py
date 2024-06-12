@@ -426,8 +426,7 @@ def noisy_histogram_creation(df, selected_query, data_type, parameter, parameter
         categories = [float(c) for c in categories]  # Ensure categories are floats
 
     categories = list(set(categories))  # Remove duplicates from categories
-    print(categories)
-    print(categories)
+    
 
     data = {}
     true_counts = df[columnName].value_counts().reindex(categories).values

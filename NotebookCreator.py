@@ -189,9 +189,15 @@ print(result)'''))
     return dp.c.make_fix_delta(meas, delta)'''))
 
         # Cell 4: Load data and get parameters
+        
         column_name, _ = query_info['export_selected_query'].split('_')
-        categories = sorted(pd.read_csv(query_info['url'])[column_name].unique())
-        nb['cells'].append(nbf.v4.new_code_cell(source=f'''# Load data and get parameters
+        column_type = df[column_name].dtype
+
+       
+
+        if column_type == object:
+            categories = sorted(pd.read_csv(query_info['url'])[column_name].unique())
+            nb['cells'].append(nbf.v4.new_code_cell(source=f'''# Load data and get parameters
 df = pd.read_csv('{query_info['url']}')
 query_type = '{query_info['export_selected_query']}'
 mechanism = '{query_info['export_mechanism']}'
@@ -199,15 +205,13 @@ epsilon = {query_info['export_epsilon']}
 column_name = '{column_name}'
 categories = {categories}
 column_type = df[column_name].dtype'''))
-
-        if column_type == object:
             df[column_name] = df[column_name].astype('str')
             categories = np.array(categories, dtype=str)
 
-        if query_info['export_mechanism'] == 'laplace':
-            # Cell 5: Define and apply Laplace mechanism
-            if column_type == object:
-                nb['cells'].append(nbf.v4.new_code_cell(source=f'''histogram = (
+            if query_info['export_mechanism'] == 'laplace':
+                # Cell 5: Define and apply Laplace mechanism
+                if column_type == object:
+                    nb['cells'].append(nbf.v4.new_code_cell(source=f'''histogram = (
 dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
 dp.t.make_select_column(column_name, str) >>
 dp.t.then_count_by_categories(categories=[c[1:] for c in categories], MO=dp.L1Distance[int] )
@@ -216,8 +220,8 @@ noisy_laplace_histogram = dp.binary_search_chain(
 lambda s: histogram >> dp.m.then_laplace(scale=s),
 d_in=1, d_out=epsilon)
 sensitive_counts = noisy_laplace_histogram(df.to_csv(index=False, header=False))'''))
-            else:
-                nb['cells'].append(nbf.v4.new_code_cell(source=f'''histogram = (
+                else:
+                    nb['cells'].append(nbf.v4.new_code_cell(source=f'''histogram = (
 dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
 dp.t.make_select_column(column_name, str) >>
 dp.t.then_cast_default(int) >>
@@ -229,11 +233,11 @@ d_in=1, d_out=epsilon)
 sensitive_counts = noisy_laplace_histogram(df.to_csv(index=False, header=False))'''))
 
             # Cell 6: Print results
-            nb['cells'].append(nbf.v4.new_code_cell(source='''print("Noisy Laplace Counts:", sensitive_counts[:-1])'''))
-        elif query_info['export_mechanism'] == 'gaussian':
-            # Cell 5: Define and apply Gaussian mechanism
-            if column_type == object:
-                nb['cells'].append(nbf.v4.new_code_cell(source=f'''delta = {query_info['export_delta']}
+                nb['cells'].append(nbf.v4.new_code_cell(source='''print("Noisy Laplace Counts:", sensitive_counts[:-1])'''))
+            elif query_info['export_mechanism'] == 'gaussian':
+                # Cell 5: Define and apply Gaussian mechanism
+                if column_type == object:
+                    nb['cells'].append(nbf.v4.new_code_cell(source=f'''delta = {query_info['export_delta']}
 t_hist = (
 dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
 dp.t.make_select_column(column_name, str) >>
@@ -244,8 +248,8 @@ lambda s: at_delta(t_hist >> dp.m.then_gaussian(scale=s), delta),
 d_in=1,
 d_out=(epsilon, delta))
 sensitive_gaussian_counts = m_hist(df.to_csv(index=False, header=False))'''))
-            else:
-                nb['cells'].append(nbf.v4.new_code_cell(source=f'''delta = {query_info['export_delta']}
+                else:
+                    nb['cells'].append(nbf.v4.new_code_cell(source=f'''delta = {query_info['export_delta']}
 t_hist = (
 dp.t.make_split_dataframe(separator=",", col_names=list(df.columns)) >>
 dp.t.make_select_column(column_name, str) >>

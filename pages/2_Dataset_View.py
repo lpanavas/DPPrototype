@@ -52,6 +52,13 @@ st.title('Dataset Selection')
 # Use the `tabs` function to create tabs
 tab1, tab2, tab3 = st.tabs(["PreLoaded Datasets", "Synthetic Dataset", "Upload Dataset"])
 
+if 'selected_dataset' in st.session_state:
+    del st.session_state['selected_dataset']
+
+if 'queries' in st.session_state:
+    del st.session_state['queries']
+
+
 @st.cache_data()
 def load_datasets(datasets):
     loaded_datasets = {}
