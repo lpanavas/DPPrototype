@@ -72,24 +72,25 @@ st.subheader("Select Columns")
 columns = data.columns.tolist()
 num_cols = 5  # number of columns in the row structure
 col_containers = st.columns(num_cols)
-
 for i, col in enumerate(columns):
     with col_containers[i % num_cols]:
         if st.checkbox(f"Select {col}", key=f"checkbox_{col}"):
             if col not in st.session_state['selected_columns']:
                 st.session_state['selected_columns'].append(col)
                 st.session_state[f"dialog_open_{col}"] = True  # Initialize dialog state when column is selected
-        else:
-            if col in st.session_state['selected_columns']:
-                st.session_state['selected_columns'].remove(col)
-                for query_type in ['count', 'average', 'histogram']:
-                    query_key = f"{col}_{query_type}"
-                    if query_key in st.session_state['queries']:
-                        del st.session_state['queries'][query_key]
-                st.session_state[f"dialog_open_{col}"] = False  # Reset dialog state when column is deselected
+        # else:
+        #     if col in st.session_state['selected_columns']:
+        #         st.write(st.session_state['selected_columns'])
+        #         st.write(col)
+        #         st.session_state['selected_columns'].remove(col)
+        #         for query_type in ['count', 'average', 'histogram']:
+        #             query_key = f"{col}_{query_type}"
+        #             if query_key in st.session_state['queries']:
+        #                 del st.session_state['queries'][query_key]
+        #         st.session_state[f"dialog_open_{col}"] = False  # Reset dialog state when column is deselected
 
 # Dialog function to add queries
-@st.experimental_dialog("Add Query", width="small")
+@st.dialog("Add Query", width="small")
 def add_query(column):
     if f"metadata_{column}" not in st.session_state:
         st.session_state[f"metadata_{column}"] = {}
@@ -134,7 +135,7 @@ def add_query(column):
     if st.button("Submit"):
         st.session_state[f"dialog_open_{column}"] = False
         st.rerun()
-
+    
 # Update queries based on selected columns
 for column in st.session_state['selected_columns']:
     if st.session_state.get(f"dialog_open_{column}", True):
