@@ -40,7 +40,7 @@ def column_selection_charts(df, column):
         )
     
 
-def create_figure(chart_df, true_mean, y_axis_min):
+def create_figure(chart_df, true_mean, y_axis_min, query):
 
     fig = go.Figure(data=[
         go.Scatter(
@@ -68,7 +68,7 @@ def create_figure(chart_df, true_mean, y_axis_min):
     ))
 
     fig.update_layout(
-        title='Privacy Parameter (\u03B5) vs Hypothetical Private Values',
+        title=f'{query} vs Hypothetical Private Values',
         
         xaxis=dict(
         title='Privacy Parameter (\u03B5)',
@@ -220,7 +220,7 @@ def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_valu
                 min_private_release = min(min(private_releases[epsilon]) for epsilon in epsilon_variations)
                 y_axis_min = min(0, min_private_release) 
 
-                return create_figure(chart_df, true_mean, y_axis_min)
+                return create_figure(chart_df, true_mean, y_axis_min, query)
         if queryType == 'average':
 
             data = []
@@ -306,7 +306,7 @@ def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_valu
             min_private_release = min(min(private_releases[bounds]) for bounds in parameter_list)
             y_axis_min = min(0, min_private_release)
 
-            return create_figure(chart_df, true_mean, y_axis_min)
+            return create_figure(chart_df, true_mean, y_axis_min, query)
     if query == 'Mechanism':
         columnName, queryType = column.split('_')
         mechanisms = sorted(parameter_list)
@@ -349,7 +349,7 @@ def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_valu
             min_private_release = min(min(private_releases[mechanism]) for mechanism in mechanisms)
             y_axis_min = min(0, min_private_release) 
 
-            return create_figure(chart_df, true_mean, y_axis_min)
+            return create_figure(chart_df, true_mean, y_axis_min, query)
         if queryType == 'average':
 
             data = []
@@ -387,7 +387,7 @@ def preset_parameters(df, column, query,  parameter_list, hide_non_feasible_valu
             min_private_release = min(min(private_releases[mechanism]) for mechanism in mechanisms)
             y_axis_min = min(0, min_private_release) 
 
-            return create_figure(chart_df, true_mean, y_axis_min)
+            return create_figure(chart_df, true_mean, y_axis_min, query)
         
 
 
