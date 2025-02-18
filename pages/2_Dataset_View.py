@@ -94,7 +94,7 @@ with tab1:
                             st.session_state['pages']['dataset'] = True
                             st.session_state.selected_dataset = loaded_datasets[dataset_name]
                             st.session_state['dataset_url'] = datasets[dataset_name]['url']
-                            switch_page("Query Selection")
+                            switch_page("Visualizations")
 
 # Fill content for Tab 2
 from scipy.stats import norm, randint, expon
@@ -182,7 +182,7 @@ with tab2:
             # Add a button to add the synthetic dataframe to the selected dataframe of session state
             if st.button("Use Synthetic Data"):
                 st.session_state.selected_dataset = df
-                switch_page("Query Selection")
+                switch_page("Visualizations")
         
 # with tab3:
 #     st.header('Upload Dataset')
