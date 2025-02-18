@@ -23,8 +23,7 @@ Once you've selected a dataset and queries, you'll be able to visualize the priv
 - **Simulations**: Set different implementation parameters and see the effects on hypothetical data releases
 - **One Query**: Visualize the privacy accuracy tradeoff charts for different parameter settings and error metrics.
 - **Multiple Queries**: Balance your privacy usage across multiple queries and try different composition methods.
-- **Data Export**: Create notebooks that allow you to run the private data releases on your own machine.
-
+    
 Let's get started by selecting your dataset.
 """)
 

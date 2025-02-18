@@ -16,7 +16,7 @@ st.title('Visualization Playground')
 if 'selected_dataset' not in st.session_state:
     st.session_state['selected_dataset'] = None
 df = st.session_state['selected_dataset']
-tab1, tab2, tab3, tab4 = st.tabs(["Simulations", "One Query", "Multiple Queries", "Data Export"])
+tab1, tab2, tab3 = st.tabs(["Simulations", "One Query", "Multiple Queries"])
 
 # Initialize an empty list to store the numbers
 if 'simulations_parameter_selection' not in st.session_state:
